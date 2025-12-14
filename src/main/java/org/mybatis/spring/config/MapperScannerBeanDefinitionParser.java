@@ -65,11 +65,14 @@ public class MapperScannerBeanDefinitionParser extends AbstractBeanDefinitionPar
    */
   @Override
   protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
+    // 声明类型 MapperScannerConfigurer
     BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(MapperScannerConfigurer.class);
 
     ClassLoader classLoader = ClassUtils.getDefaultClassLoader();
 
     String processPropertyPlaceHolders = element.getAttribute(ATTRIBUTE_PROCESS_PROPERTY_PLACEHOLDERS);
+
+    // 设置是否要处理 placeholder
     builder.addPropertyValue("processPropertyPlaceHolders",
         !StringUtils.hasText(processPropertyPlaceHolders) || Boolean.parseBoolean(processPropertyPlaceHolders));
     try {

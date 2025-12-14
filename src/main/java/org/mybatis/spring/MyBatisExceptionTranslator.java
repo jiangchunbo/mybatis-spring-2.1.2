@@ -34,22 +34,26 @@ import org.springframework.transaction.TransactionException;
  * Translates MyBatis SqlSession returned exception into a Spring {@code DataAccessException} using Spring's
  * {@code SQLExceptionTranslator} Can load {@code SQLExceptionTranslator} eagerly or when the first exception is
  * translated.
+ * <p>
+ * 将 MyBatis 的异常，翻译为 Spring 的 {@link DataAccessException}。
+ * 但是其实也不用特意写太多自己的代码，因为底层的异常大多还是 JDBC API 提供的异常。
+ * 所以，这个类只需要将 MyBatis 自己异常里面的 cause 解析出来(期望是 {@link SQLException})，
+ * 然后再委派给 Spring 组件 {@link SQLErrorCodeSQLExceptionTranslator} 解析即可
  *
  * @author Eduardo Macarron
  */
 public class MyBatisExceptionTranslator implements PersistenceExceptionTranslator {
 
   private final Supplier<SQLExceptionTranslator> exceptionTranslatorSupplier;
+
   private SQLExceptionTranslator exceptionTranslator;
 
   /**
    * Creates a new {@code PersistenceExceptionTranslator} instance with {@code SQLErrorCodeSQLExceptionTranslator}.
    *
-   * @param dataSource
-   *          DataSource to use to find metadata and establish which error codes are usable.
-   * @param exceptionTranslatorLazyInit
-   *          if true, the translator instantiates internal stuff only the first time will have the need to translate
-   *          exceptions.
+   * @param dataSource                  DataSource to use to find metadata and establish which error codes are usable.
+   * @param exceptionTranslatorLazyInit if true, the translator instantiates internal stuff only the first time will have the need to translate
+   *                                    exceptions.
    */
   public MyBatisExceptionTranslator(DataSource dataSource, boolean exceptionTranslatorLazyInit) {
     this(() -> new SQLErrorCodeSQLExceptionTranslator(dataSource), exceptionTranslatorLazyInit);
@@ -58,16 +62,13 @@ public class MyBatisExceptionTranslator implements PersistenceExceptionTranslato
   /**
    * Creates a new {@code PersistenceExceptionTranslator} instance with specified {@code SQLExceptionTranslator}.
    *
-   * @param exceptionTranslatorSupplier
-   *          Supplier for creating a {@code SQLExceptionTranslator} instance
-   * @param exceptionTranslatorLazyInit
-   *          if true, the translator instantiates internal stuff only the first time will have the need to translate
-   *          exceptions.
-   *
+   * @param exceptionTranslatorSupplier Supplier for creating a {@code SQLExceptionTranslator} instance
+   * @param exceptionTranslatorLazyInit if true, the translator instantiates internal stuff only the first time will have the need to translate
+   *                                    exceptions.
    * @since 2.0.3
    */
   public MyBatisExceptionTranslator(Supplier<SQLExceptionTranslator> exceptionTranslatorSupplier,
-      boolean exceptionTranslatorLazyInit) {
+                                    boolean exceptionTranslatorLazyInit) {
     this.exceptionTranslatorSupplier = exceptionTranslatorSupplier;
     if (!exceptionTranslatorLazyInit) {
       this.initExceptionTranslator();
@@ -79,17 +80,30 @@ public class MyBatisExceptionTranslator implements PersistenceExceptionTranslato
    */
   @Override
   public DataAccessException translateExceptionIfPossible(RuntimeException e) {
+    // 将属于自己的异常，翻译为 Spring 的 DataAccessException
+    // 其实，就是获取内部的 SQLException，然后委托给 Spring
+
     if (e instanceof PersistenceException) {
       // Batch exceptions come inside another PersistenceException
       // recursion has a risk of infinite loop so better make another if
+      // 批量操作时抛出的异常，通常会被再包一层，最外层是 PersistenceException
+      // 如果靠递归去解析最里面的异常，可能陷入无限循环
       if (e.getCause() instanceof PersistenceException) {
         e = (PersistenceException) e.getCause();
       }
+
+      // 如果 cause 是 SQLException
       if (e.getCause() instanceof SQLException) {
-        this.initExceptionTranslator();
+        this.initExceptionTranslator(); // 确保 Spring 的异常翻译器初始化
+
         String task = e.getMessage() + "\n";
-        SQLException se = (SQLException) e.getCause();
+
+        SQLException se = (SQLException) e.getCause(); // cause 强转为 SQLException
+
+        // 交给 Spring 翻译异常
         DataAccessException dae = this.exceptionTranslator.translate(task, null, se);
+
+        // 如果能翻译出来就返回，翻译不出来就返回 UncategorizedSQLException
         return dae != null ? dae : new UncategorizedSQLException(task, null, se);
       } else if (e.getCause() instanceof TransactionException) {
         throw (TransactionException) e.getCause();

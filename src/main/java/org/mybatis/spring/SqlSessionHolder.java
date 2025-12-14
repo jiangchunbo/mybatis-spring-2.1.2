@@ -34,6 +34,10 @@ public final class SqlSessionHolder extends ResourceHolderSupport {
 
   private final SqlSession sqlSession;
 
+  /**
+   * {@link ExecutorType} 封装进来，但其实 {@link SqlSession} 包含着 executorType 信息的，
+   * 在它的属性 {@link ExecutorType} 里，但是仅仅通过接口 {@link SqlSession} 又无法直接访问这个属性，故而封装
+   */
   private final ExecutorType executorType;
 
   private final PersistenceExceptionTranslator exceptionTranslator;
@@ -41,15 +45,12 @@ public final class SqlSessionHolder extends ResourceHolderSupport {
   /**
    * Creates a new holder instance.
    *
-   * @param sqlSession
-   *          the {@code SqlSession} has to be hold.
-   * @param executorType
-   *          the {@code ExecutorType} has to be hold.
-   * @param exceptionTranslator
-   *          the {@code PersistenceExceptionTranslator} has to be hold.
+   * @param sqlSession          the {@code SqlSession} has to be hold.
+   * @param executorType        the {@code ExecutorType} has to be hold.
+   * @param exceptionTranslator the {@code PersistenceExceptionTranslator} has to be hold.
    */
   public SqlSessionHolder(SqlSession sqlSession, ExecutorType executorType,
-      PersistenceExceptionTranslator exceptionTranslator) {
+                          PersistenceExceptionTranslator exceptionTranslator) {
 
     notNull(sqlSession, "SqlSession must not be null");
     notNull(executorType, "ExecutorType must not be null");

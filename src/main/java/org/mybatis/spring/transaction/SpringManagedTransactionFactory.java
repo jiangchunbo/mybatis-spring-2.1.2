@@ -32,7 +32,9 @@ import org.apache.ibatis.transaction.TransactionFactory;
 public class SpringManagedTransactionFactory implements TransactionFactory {
 
   /**
-   * {@inheritDoc}
+   * 当 {@link org.apache.ibatis.session.SqlSessionFactory} 打开新的 SqlSession 时会调用该方法
+   * <p>
+   * 参数中的 {@link DataSource} 虽然来自 Environment，但是其与 Spring 的 DataSource 一致
    */
   @Override
   public Transaction newTransaction(DataSource dataSource, TransactionIsolationLevel level, boolean autoCommit) {

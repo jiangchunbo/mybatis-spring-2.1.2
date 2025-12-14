@@ -42,14 +42,16 @@ import org.springframework.util.StringUtils;
  * A {@link ImportBeanDefinitionRegistrar} to allow annotation configuration of MyBatis mapper scanning. Using
  * an @Enable annotation allows beans to be registered via @Component configuration, whereas implementing
  * {@code BeanDefinitionRegistryPostProcessor} will work for XML configuration.
+ * <p>
+ * 一般是通过 {@link MapperScan} 注册进来。主要目的是注册一个 {@link MapperScannerConfigurer}。
+ * <p>
+ * 对于 {@link ImportBeanDefinitionRegistrar} 来说，会在解析配置类的早期就调用它的注册方法，完成 {@link MapperScannerConfigurer} 的注册
  *
  * @author Michael Lanyon
  * @author Eduardo Macarron
  * @author Putthiphong Boonphong
- *
  * @see MapperFactoryBean
  * @see ClassPathMapperScanner
- *
  * @since 1.2.0
  */
 public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
@@ -71,34 +73,41 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
   @Override
   public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
     AnnotationAttributes mapperScanAttrs = AnnotationAttributes
-        .fromMap(importingClassMetadata.getAnnotationAttributes(MapperScan.class.getName()));
+      .fromMap(importingClassMetadata.getAnnotationAttributes(MapperScan.class.getName()));
+
+    // 生成 bean name 然后向容器中注册 MapperScannerConfigurer
+    // ps: 如果有项目中有多个 @MapperScan，那么这里会多次执行，注册多个 MapperScannerConfigurer
     if (mapperScanAttrs != null) {
-      registerBeanDefinitions(importingClassMetadata, mapperScanAttrs, registry,
-          generateBaseBeanName(importingClassMetadata, 0));
+      registerBeanDefinitions(importingClassMetadata, mapperScanAttrs, registry, generateBaseBeanName(importingClassMetadata, 0));
     }
   }
 
   void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs,
-      BeanDefinitionRegistry registry, String beanName) {
+                               BeanDefinitionRegistry registry, String beanName) {
 
+    // 注册 MapperScannerConfigurer，由于没有实现 Order 相关接口，所以优先级会比较低
     BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(MapperScannerConfigurer.class);
     builder.addPropertyValue("processPropertyPlaceHolders", annoAttrs.getBoolean("processPropertyPlaceHolders"));
 
+    // 用于注解过滤器
     Class<? extends Annotation> annotationClass = annoAttrs.getClass("annotationClass");
     if (!Annotation.class.equals(annotationClass)) {
       builder.addPropertyValue("annotationClass", annotationClass);
     }
 
+    // 用于类型过滤器
     Class<?> markerInterface = annoAttrs.getClass("markerInterface");
     if (!Class.class.equals(markerInterface)) {
       builder.addPropertyValue("markerInterface", markerInterface);
     }
 
+    // bean name 生成器
     Class<? extends BeanNameGenerator> generatorClass = annoAttrs.getClass("nameGenerator");
     if (!BeanNameGenerator.class.equals(generatorClass)) {
       builder.addPropertyValue("nameGenerator", BeanUtils.instantiateClass(generatorClass));
     }
 
+    // MapperFactoryBean 类型
     Class<? extends MapperFactoryBean> mapperFactoryBeanClass = annoAttrs.getClass("factoryBean");
     if (!MapperFactoryBean.class.equals(mapperFactoryBeanClass)) {
       builder.addPropertyValue("mapperFactoryBeanClass", mapperFactoryBeanClass);
@@ -117,10 +126,10 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
     List<String> basePackages = new ArrayList<>();
 
     basePackages.addAll(Arrays.stream(annoAttrs.getStringArray("basePackages")).filter(StringUtils::hasText)
-        .collect(Collectors.toList()));
+      .collect(Collectors.toList()));
 
     basePackages.addAll(Arrays.stream(annoAttrs.getClassArray("basePackageClasses")).map(ClassUtils::getPackageName)
-        .collect(Collectors.toList()));
+      .collect(Collectors.toList()));
 
     if (basePackages.isEmpty()) {
       basePackages.add(getDefaultBasePackage(annoMeta));
@@ -145,6 +154,15 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
 
   }
 
+  /**
+   * 生成 bean name。
+   * <p>
+   * bean name 主要的变数在于是谁导入它的。
+   *
+   * @param importingClassMetadata 导入 {@link MapperScan} 注解的类
+   * @param index                  用于可重复注解
+   * @return bean name
+   */
   private static String generateBaseBeanName(AnnotationMetadata importingClassMetadata, int index) {
     return importingClassMetadata.getClassName() + "#" + MapperScannerRegistrar.class.getSimpleName() + "#" + index;
   }
@@ -159,21 +177,23 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
    * @since 2.0.0
    */
   static class RepeatingRegistrar extends MapperScannerRegistrar {
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
       AnnotationAttributes mapperScansAttrs = AnnotationAttributes
-          .fromMap(importingClassMetadata.getAnnotationAttributes(MapperScans.class.getName()));
+        .fromMap(importingClassMetadata.getAnnotationAttributes(MapperScans.class.getName()));
       if (mapperScansAttrs != null) {
         AnnotationAttributes[] annotations = mapperScansAttrs.getAnnotationArray("value");
         for (int i = 0; i < annotations.length; i++) {
           registerBeanDefinitions(importingClassMetadata, annotations[i], registry,
-              generateBaseBeanName(importingClassMetadata, i));
+            generateBaseBeanName(importingClassMetadata, i));
         }
       }
     }
+
   }
 
 }

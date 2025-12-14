@@ -421,6 +421,10 @@ public class SqlSessionTemplate implements SqlSession, DisposableBean {
   private class SqlSessionInterceptor implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+      if (method.getDeclaringClass() == Object.class) {
+        return method.invoke(SqlSessionTemplate.this, args);
+      }
+
       // 获取或创建 SqlSession 并绑定到事务里
       SqlSession sqlSession = getSqlSession(SqlSessionTemplate.this.sqlSessionFactory,
           SqlSessionTemplate.this.executorType, SqlSessionTemplate.this.exceptionTranslator);

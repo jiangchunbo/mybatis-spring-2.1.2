@@ -55,6 +55,9 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
 
   private Class<T> mapperInterface;
 
+  /**
+   * 是否把这个 Mapper 注册到 {@link Configuration}
+   */
   private boolean addToConfig = true;
 
   public MapperFactoryBean() {
@@ -70,8 +73,10 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
    */
   @Override
   protected void checkDaoConfig() {
+    // 检查 sqlSessionTemplate 是否设置
     super.checkDaoConfig();
 
+    // 检查 mapperInterface 是否设置 (实现哪个接口)
     notNull(this.mapperInterface, "Property 'mapperInterface' is required");
 
     Configuration configuration = getSqlSession().getConfiguration();
@@ -92,6 +97,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
    */
   @Override
   public T getObject() throws Exception {
+    // 由于是单例，所以该方法只会调用一次
     return getSqlSession().getMapper(this.mapperInterface);
   }
 

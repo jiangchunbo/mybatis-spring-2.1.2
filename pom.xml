@@ -106,7 +106,7 @@
     <osgi.dynamicImport>*</osgi.dynamicImport>
 
     <mybatis.version>3.5.14</mybatis.version>
-    <spring.version>5.3.31</spring.version>
+    <spring.version>5.3.39</spring.version>
     <spring-batch.version>4.3.10</spring-batch.version>
     <module.name>org.mybatis.spring</module.name>
 
@@ -313,6 +313,20 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>com.mycila</groupId>
         <artifactId>license-maven-plugin</artifactId>
