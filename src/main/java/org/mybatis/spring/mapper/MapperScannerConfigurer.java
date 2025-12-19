@@ -388,7 +388,8 @@ public class MapperScannerConfigurer
       DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
       factory.registerBeanDefinition(beanName, mapperScannerBean);
 
-      // 处理 bean definition 中各种属性值
+      // 使用所有的属性处理器，去处理刚刚创建出来的 bean factory 里面的 bean
+      // 其实只需要处理仅仅 1 个 bean，也就是刚才注册的 MapperScannerConfigurer 属性值
       for (PropertyResourceConfigurer prc : prcs.values()) {
         prc.postProcessBeanFactory(factory);
       }
